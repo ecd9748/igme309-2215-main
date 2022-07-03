@@ -3,34 +3,54 @@ using namespace BTX;
 //  MyCamera
 void MyCamera::SetPositionTargetAndUpward(vector3 a_v3Position, vector3 a_v3Target, vector3 a_v3Upward)
 {
-	//TODO:: replace the super call with your functionality
-	//Tip: Changing any positional vector forces you to calculate new directional ones
-	super::SetPositionTargetAndUpward(a_v3Position, a_v3Target, a_v3Upward);
+	m_v3Position = a_v3Position;
+	m_v3Target = a_v3Target;
 
-	//After changing any vectors you need to recalculate the MyCamera View matrix.
-	//While this is executed within the parent call above, when you remove that line
-	//you will still need to call it at the end of this method
+	m_v3Above = a_v3Position + glm::normalize(a_v3Upward);
+
+	GetProjectionMatrix();
+	GetViewMatrix();
 	CalculateView();
 }
 void MyCamera::MoveForward(float a_fDistance)
 {
-	//Tips:: Moving will modify both positional and directional vectors,
-	//		 here we only modify the positional.
-	//       The code below "works" because we wrongly assume the forward 
-	//		 vector is going in the global -Z but if you look at the demo 
-	//		 in the _Binary folder you will notice that we are moving 
-	//		 backwards and we never get closer to the plane as we should 
-	//		 because as we are looking directly at it.
-	m_v3Position += vector3(0.0f, 0.0f, a_fDistance);
-	m_v3Target += vector3(0.0f, 0.0f, a_fDistance);
+	vector3 position = GetPosition();
+	if (a_fDistance < 0)
+	{
+		position = position - m_v3Forward;
+	}
+	else
+	{
+		position = position + m_v3Forward;
+	}
+	SetPositionTargetAndUpward(position, (position + GetForward()), vector3(0.0f, 1.0f, 0.0f));
 }
 void MyCamera::MoveVertical(float a_fDistance)
 {
-	//Tip:: Look at MoveForward
+	vector3 position = GetPosition();
+	if (a_fDistance < 0)
+	{
+		position = position + m_v3Upward;
+	}
+	else
+	{
+		position = position - m_v3Upward;
+	}
+	SetPositionTargetAndUpward(position, (position + GetForward()), vector3(0.0f, 1.0f, 0.0f));
 }
 void MyCamera::MoveSideways(float a_fDistance)
 {
-	//Tip:: Look at MoveForward
+	vector3 position = GetPosition();
+	if (a_fDistance < 0)
+	{
+		position = position - m_v3Rightward;
+	}
+	else
+	{
+		position = position + m_v3Rightward;
+	}
+	SetPositionTargetAndUpward(position, (position+GetForward()), vector3(0.0f, 1.0f, 0.0f) );
+
 }
 void MyCamera::CalculateView(void)
 {
@@ -40,7 +60,16 @@ void MyCamera::CalculateView(void)
 	//		 it will receive information from the main code on how much these orientations
 	//		 have change so you only need to focus on the directional and positional 
 	//		 vectors. There is no need to calculate any right click process or connections.
+
+	vector3 position = GetPosition();
+	quaternion m_qOrientation = glm::angleAxis(glm::radians(1.0f), m_v3PitchYawRoll);
+	vector3 NewForward = glm::rotate(m_qOrientation, m_v3Forward);
+	vector3 NewRightward = glm::rotate(m_qOrientation, m_v3Rightward);
+	m_v3Forward = NewForward;
+	m_v3Rightward = NewRightward;
+	m_v3Target = m_v3Forward + position;
 	m_m4View = glm::lookAt(m_v3Position, m_v3Target, m_v3Upward);
+	m_v3PitchYawRoll = vector3(0.0f, 0.0f, 0.0f);
 }
 //You can assume that the code below does not need changes unless you expand the functionality
 //of the class or create helper methods, etc.
@@ -174,7 +203,18 @@ void MyCamera::CalculateProjection(void)
 
 void MyCamera::ChangePitch(float a_fDegree)
 {
-	m_v3PitchYawRoll.x += a_fDegree;
+	if (m_v3PitchYawRoll.x > 1.0f)
+	{
+		m_v3PitchYawRoll.x = 1.0f;
+	}
+	if (m_v3PitchYawRoll.x < -1.0f)
+	{
+		m_v3PitchYawRoll.x = -1.0f;
+	}
+	else
+	{
+		m_v3PitchYawRoll.x += a_fDegree;
+	}
 }
 void MyCamera::ChangeYaw(float a_fDegree)
 {
